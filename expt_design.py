@@ -41,21 +41,38 @@ class ExperimentDesign(object):
         self.mcs_min = mcs_min
         self.mcs_max = mcs_max
         self.cores_per_mc = cores_per_mc
-        self.budget = budget
         self.num_parts_interpolate = num_parts_interpolate
+        self.budget = 5000
+
+        self.depth_min_ = 1
+        self.depth_max_ = 5
+        self.fanout_min = 10
+        self.fanout_max = 30
+        self.recievers_max = 10_000
 
     def _construct_constraints(self, lambdas, points):
         '''Construct non-negative lambdas and budget constraints'''
         constraints = []
         constraints.append(0 <= lambdas)
         constraints.append(lambdas <= 1)
-        constraints.append(self._get_cost(lambdas, points) <= self.budget)
+        constraints.append(self._get_cost(lambdas, points) <= self.recievers_max)
         return constraints
+
+    def total_nodes(self, D, F):
+        if D == 0:
+            return 1  # The root node
+        return F ** D + self.total_nodes(D - 1, F)
 
     def _get_cost(self, lambdas, points):
         '''Estimate the cost of an experiment. Right now this is input_frac/machines'''
         cost = 0
         num_points = len(points)
+        for i in range(0, num_points):
+            D = points[i][0]
+            F = points[i][1]
+            cost = cost + (self.total_nodes(D, F)*lambdas[i])
+        return cost
+
         scale_min = float(self.parts_min) / float(self.total_parts)
         for i in range(0, num_points):
             scale = points[i][0]
@@ -65,16 +82,23 @@ class ExperimentDesign(object):
 
     def _get_training_points(self):
         '''Enumerate all the training points given the params for experiment design'''
-        mcs_range = list(range(self.mcs_min, self.mcs_max + 1))
+        depth_range = list(range(self.depth_min_, self.depth_max_+1))
+        fanout_range = list(range(self.fanout_min, self.fanout_max+1))
+        for depth in depth_range:
+            for fanout in fanout_range:
+                if self.total_nodes(depth, fanout) <= self.recievers_max:
+                    yield [depth, fanout]
+        
+        # mcs_range = list(range(self.mcs_min, self.mcs_max + 1))
 
-        scale_min = float(self.parts_min) / float(self.total_parts)
-        scale_max = float(self.parts_max) / float(self.total_parts)
-        scale_range = np.linspace(scale_min, scale_max, self.num_parts_interpolate)
+        # scale_min = float(self.parts_min) / float(self.total_parts)
+        # scale_max = float(self.parts_max) / float(self.total_parts)
+        # scale_range = np.linspace(scale_min, scale_max, self.num_parts_interpolate)
 
-        for scale in scale_range:
-            for mcs in mcs_range:
-                if np.round(scale * self.total_parts) >= self.cores_per_mc * mcs:
-                    yield [scale, mcs]
+        # for scale in scale_range:
+        #     for mcs in mcs_range:
+        #         if np.round(scale * self.total_parts) >= self.cores_per_mc * mcs:
+        #             yield [scale, mcs]
 
     def _frac2parts(self, fraction):
         '''Convert input fraction into number of partitions'''
@@ -106,6 +130,7 @@ class ExperimentDesign(object):
                 filtered_lambda_idxs.append((lambdas[i].value, i))
 
         sorted_by_lambda = sorted(filtered_lambda_idxs, key=lambda t: t[0], reverse=True)
+        return [(training_points[idx][0], training_points[idx][1], l) for (l,idx) in sorted_by_lambda]
         return [(self._frac2parts(training_points[idx][0]), training_points[idx][0],
                  training_points[idx][1], l) for (l, idx) in sorted_by_lambda]
 
@@ -137,6 +162,9 @@ def _get_covariance_matrices(features_arr):
 
 def _get_features(training_point):
     ''' Compute the features for a given point. Point is expected to be [input_frac, machines]'''
+    depth = training_point[0]
+    fanout = training_point[1]
+    return [depth, fanout]
     scale = training_point[0]
     mcs = training_point[1]
     return [1.0, float(scale) / float(mcs), float(mcs), np.log(mcs)]
@@ -171,6 +199,10 @@ if __name__ == "__main__":
         args.num_parts_interpolate)
 
     expts = ex.run()
-    print ("Machines, Cores, InputFraction, Partitions, Weight")
+    print("Depth, Fanout, Weight")
     for expt in expts:
-        print ("%d, %d, %f, %d, %f" % (expt[2], expt[2] * args.cores_per_mc, expt[1], expt[0], expt[3]))
+        print(f"{expt[0], expt[1], expt[2]}")
+    
+    # print ("Machines, Cores, InputFraction, Partitions, Weight")
+    # for expt in expts:
+    #     print ("%d, %d, %f, %d, %f" % (expt[2], expt[2] * args.cores_per_mc, expt[1], expt[0], expt[3]))
