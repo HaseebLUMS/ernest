@@ -57,7 +57,7 @@ class ExperimentDesign(object):
         cost = 0
         num_points = len(points)
         scale_min = float(self.parts_min) / float(self.total_parts)
-        for i in xrange(0, num_points):
+        for i in range(0, num_points):
             scale = points[i][0]
             mcs = points[i][1]
             cost = cost + (float(scale) / scale_min * 1.0 / float(mcs) * lambdas[i])
@@ -65,7 +65,7 @@ class ExperimentDesign(object):
 
     def _get_training_points(self):
         '''Enumerate all the training points given the params for experiment design'''
-        mcs_range = xrange(self.mcs_min, self.mcs_max + 1)
+        mcs_range = list(range(self.mcs_min, self.mcs_max + 1))
 
         scale_min = float(self.parts_min) / float(self.total_parts)
         scale_max = float(self.parts_max) / float(self.total_parts)
@@ -115,10 +115,10 @@ def _construct_objective(covariance_matrices, lambdas):
     num_dim = int(covariance_matrices[0].shape[0])
     objective = 0
     matrix_part = np.zeros([num_dim, num_dim])
-    for j in xrange(0, num_points):
+    for j in range(0, num_points):
         matrix_part = matrix_part + covariance_matrices[j] * lambdas[j]
 
-    for i in xrange(0, num_dim):
+    for i in range(0, num_dim):
         k_vec = np.zeros(num_dim)
         k_vec[i] = 1.0
         objective = objective + cvx.matrix_frac(k_vec, matrix_part)
@@ -130,7 +130,7 @@ def _get_covariance_matrices(features_arr):
     col_means = np.mean(features_arr, axis=0)
     means_inv = (1.0 / col_means)
     nrows = features_arr.shape[0]
-    for i in xrange(0, nrows):
+    for i in range(0, nrows):
         feature_row = features_arr[i,]
         ftf = np.outer(feature_row.transpose(), feature_row)
         yield np.diag(means_inv).transpose().dot(ftf.dot(np.diag(means_inv)))
@@ -171,6 +171,6 @@ if __name__ == "__main__":
         args.num_parts_interpolate)
 
     expts = ex.run()
-    print "Machines, Cores, InputFraction, Partitions, Weight"
+    print ("Machines, Cores, InputFraction, Partitions, Weight")
     for expt in expts:
-        print "%d, %d, %f, %d, %f" % (expt[2], expt[2] * args.cores_per_mc, expt[1], expt[0], expt[3])
+        print ("%d, %d, %f, %d, %f" % (expt[2], expt[2] * args.cores_per_mc, expt[1], expt[0], expt[3]))
