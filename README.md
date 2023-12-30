@@ -16,16 +16,20 @@ a statistical technique that allows us to collect as few training points as
 required. For more details please see our [paper]
 (http://shivaram.org/publications/ernest-nsdi.pdf) and [talk slides](http://shivaram.org/talks/ernest-nsdi-2016.pdf) from NSDI 2016.
 
-### Installing Ernest
+### Configing Runtime Environment
 
-The easiest way to install Ernest is by cloning this repository.
+We recommend using conda to create the clean environment for running the python code. 
 
-Running Ernest requires installing [SciPy](http://scipy.org), [NumPy](http://numpy.org) and
-[CVXPY](http://www.cvxpy.org). An easy way to do this is using the `requirements.txt` file.
+Regarding how to install conda, see [this](https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
 ```
+conda create -n ernest_env python=3.7
+
+conda activate ernest_env
+
 pip install -r requirements.txt
 ```
+
 
 ### Using Ernest
 
@@ -48,12 +52,48 @@ required to build a performance model.
 For a more detailed example you can see our [example](examples/mllib_rcv1.md) on building a
 performance model for Spark MLlib algorithms.
 
-## Limitations, Work In Progress
 
-One of the key insights that is used by Ernest is that a number of machine learning workloads are
-iterative in nature and have predictable structure in terms of computation and communication.
-Thus we are able to run a few iterations of the job on small samples of data to build a performance
-model. However this assumption may not be valid for all workloads.
+## Adapting Ernest to Jasper Scenario
 
-Further, to compare across instance types, we currently need to build a separate model for each instance
-type. We are working on developing new techniques to share performance models across instance types.
+
+<p style="text-align: center;">
+  <img src="docs/img/ernest-adaption.png" title="Ernest Workflow" alt="Ernest Workflow" style="width: 100%; max-width: 500px;" />
+</p>
+
+Based on the figure above, we know that Jasper will have three parameters $\theta_0$, $\theta_1$, and $\theta_2$.
+
+Ernest uses [Non-Negative Least Square Method (NNLS)](https://en.wikipedia.org/wiki/Non-negative_least_squares) to solve these parametes. Here, one thing to note is, [predictor.py](predictor.py) adopts the scipy's optimizer to do NNLS, and the [documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.nnls.html#scipy.optimize.nnls) indicates that NNLS only calculates $\theta_1$, and $\theta_2$ and it does not assume $\theta_0$ exists in the model. The more complete solution should do standard normalization with the training data first, to counteract the $\theta_0$ item. However, we beleive $-w$ is trivial compared with the other items, for simplicity, we directly use NNLS and only focus on $\theta_1$, and $\theta_2$. 
+
+
+## Procedure
+
+The procedure can be divided into three steps.
+
+- Step 1: run expt_design.py to generate the experiments we want to run. When running it, we need to specify the bounds for the depth and fanout factors. These are the two key varaibles to control our experiments. For example,
+
+   ```
+   python expt_design.py \
+   --min-parts 4 --max-parts 32 --total-parts 256 \
+   --depth-min=1 --depth-max=6 --fanout-min=10 --fanout-max=25
+   ```
+
+   The min-parts, max-parts, total-parts are the original parameters of Ernest, we do not touch them. The last four parameters are customized by ourseleve.
+
+   <p style="text-align: center;">
+  <img src="docs/img/example-step1.png" title="Ernest Workflow" alt="Ernest Workflow" style="width: 100%; max-width: 500px;" />
+   </p>
+
+- Step 2: Based on the samples collected in Step 1, run these experiments in real testbed and record their running time. Record them into a csv file, see the format in [example.csv](example.csv)
+
+- Step 3: The example.csv will serve as the training data. We use predictor.py to train (fit) a NNLS model, and the model will be used to predict the run time cost given a <Depth, Fanout> setting.
+
+   ```
+   python predictor.py --csv-path="example.csv"
+   ```
+   <p style="text-align: center;">
+  <img src="docs/img/example-step3.png" title="Ernest Workflow" alt="Ernest Workflow" style="width: 100%; max-width: 500px;" />
+   </p>
+
+
+
+

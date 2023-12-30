@@ -58,7 +58,7 @@ class Predictor(object):
 
     training_errors = [str(np.around(i*100, 2)) + "%" for i in training_errors]
     print("Prediction ratios are", ", ".join(training_errors))
-    return self.model[0]
+    return self.model
 
   def num_examples(self):
     return len(self.training_data)
@@ -81,6 +81,7 @@ if __name__ == "__main__":
 
   print("Model Fitting")
   model = pred.fit()
+  print("Solution Vector", len(model[0]))
   
   test_data = [[i, 1.0] for i in range(4, 64, 4)]
 
@@ -88,3 +89,9 @@ if __name__ == "__main__":
   print("Depth Fanout Predicted-Time")
   for i in range(0, len(test_data)):
     print(test_data[i][0],test_data[i][1], predicted_times[i])
+
+  # A = np.array([[1, 0,0], [1, 1,0], [0,2, 1]])
+  # b = np.array([2, 1, 1])
+  # model = nnls(A, b)
+  # print(model[0],model[1])
+
