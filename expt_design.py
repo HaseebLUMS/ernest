@@ -1,5 +1,6 @@
 import numpy as np
 import cvxpy as cvx
+import random
 import argparse
 
 class ExperimentDesign(object):
@@ -11,7 +12,10 @@ class ExperimentDesign(object):
     and run experiment design.
     '''
     def __init__(self, parts_min, parts_max, total_parts,
-                 mcs_min=1, mcs_max=16, cores_per_mc=2, budget=10.0,
+                #  mcs_min=1, mcs_max=16,cores_per_mc=2, # dummy values
+                 depth_min=1, depth_max=5,
+                 fanout_min = 10, fanout_max=30, # these four parameters are what we need
+                 budget=10.0,
                  num_parts_interpolate=20):
         '''
         Create an experiment design instance.
@@ -38,17 +42,17 @@ class ExperimentDesign(object):
         self.parts_min = parts_min
         self.parts_max = parts_max
         self.total_parts = total_parts
-        self.mcs_min = mcs_min
-        self.mcs_max = mcs_max
-        self.cores_per_mc = cores_per_mc
+        # self.mcs_min = mcs_min
+        # self.mcs_max = mcs_max
+        # self.cores_per_mc = cores_per_mc
         self.num_parts_interpolate = num_parts_interpolate
         self.budget = 5000
 
-        self.depth_min_ = 1
-        self.depth_max_ = 5
-        self.fanout_min = 10
-        self.fanout_max = 30
-        self.recievers_max = 10_000
+        self.depth_min_ = depth_min
+        self.depth_max_ = depth_max
+        self.fanout_min = fanout_min
+        self.fanout_max = fanout_max
+        self.recievers_max = 10_000 # make it fixed for now
 
     def _construct_constraints(self, lambdas, points):
         '''Construct non-negative lambdas and budget constraints'''
@@ -180,13 +184,22 @@ if __name__ == "__main__":
     parser.add_argument('--total-parts', type=int, required=True,
         help='Total number of partitions in the dataset')
 
-    parser.add_argument('--min-mcs', type=int, required=True,
-        help='Minimum number of machines to use in experiments')
-    parser.add_argument('--max-mcs', type=int, required=True,
-        help='Maximum number of machines to use in experiments')
+    # parser.add_argument('--min-mcs', type=int, required=True,
+    #     help='Minimum number of machines to use in experiments')
+    # parser.add_argument('--max-mcs', type=int, required=True,
+    #     help='Maximum number of machines to use in experiments')
+    # parser.add_argument('--cores-per-mc', type=int, default=2,
+    #     help='Number of cores or slots available per machine, (default 2)')
 
-    parser.add_argument('--cores-per-mc', type=int, default=2,
-        help='Number of cores or slots available per machine, (default 2)')
+    parser.add_argument('--depth-min', type=int, default=1,
+        help='Minimum depth of the multicast tree in experiments')
+    parser.add_argument('--depth-max', type=int, default =5,
+        help='Maximum depth of the multicast tree in experiments')
+    parser.add_argument('--fanout-min', type=int, default=10,
+        help='Minimum fanout factor of the multicast tree in experiments')
+    parser.add_argument('--fanout-max', type=int, default=30,
+        help='Maximum fanout factor of the multicast tree in experiments')
+
     parser.add_argument('--budget', type=float, default=10.0,
         help='Budget of experiment design problem, (default 10.0)')
     parser.add_argument('--num-parts-interpolate', type=int, default=20,
@@ -195,13 +208,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ex = ExperimentDesign(args.min_parts, args.max_parts, args.total_parts,
-        args.min_mcs, args.max_mcs, args.cores_per_mc, args.budget,
+        args.depth_min, args.depth_max, args.fanout_min,args.fanout_max, args.budget,
         args.num_parts_interpolate)
 
     expts = ex.run()
-    print("Depth, Fanout, Weight")
+    print("Depth Fanout Weight")
     for expt in expts:
-        print(f"{expt[0], expt[1], expt[2]}")
+        # Generate dummy data for predictor test
+        print( str(expt[0])+" "+ str(expt[1])+" "+str(round(expt[0]*(1+random.random()%10*0.1),4) ))
+        # print(f"{expt[0], expt[1], expt[2]}")
     
     # print ("Machines, Cores, InputFraction, Partitions, Weight")
     # for expt in expts:

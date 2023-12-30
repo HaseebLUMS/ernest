@@ -3,6 +3,7 @@ import scipy
 from scipy.optimize import nnls
 import csv
 import sys
+import argparse
 
 class Predictor(object):
 
@@ -14,15 +15,14 @@ class Predictor(object):
     self.training_data = []
     self.training_data.extend(training_data_in)
     if data_file:
-      with open(data_file, 'rb') as csvfile:
+      with open(data_file, 'r') as csvfile:
         reader = csv.reader(csvfile, delimiter=' ')
         for row in reader:
-          if row[0][0] != '#':
-            parts = row[0].split(',')
-            mc = int(parts[0])
-            scale = float(parts[1])
-            time = float(parts[2])
-            self.training_data.append([mc, scale, time])
+          if row[0].isdigit():
+            depth = int(row[0])
+            fanout = int(row[1])
+            time = float(row[2])
+            self.training_data.append([depth, fanout, time])
 
   def add(self, mcs, input_fraction, time):
     self.training_data.append([mcs, input_fraction, time])
@@ -43,7 +43,7 @@ class Predictor(object):
     return test_features.dot(self.model[0])
 
   def fit(self):
-    print "Fitting a model with ", len(self.training_data), " points"
+    print("Fitting a model with ", len(self.training_data), " points")
     labels = np.array([row[2] for row in self.training_data])
     data_points = np.array([self._get_features(row) for row in self.training_data])
     self.model = nnls(data_points, labels)
@@ -57,7 +57,7 @@ class Predictor(object):
       training_errors.append(predicted / p[2])
 
     training_errors = [str(np.around(i*100, 2)) + "%" for i in training_errors]
-    print "Prediction ratios are", ", ".join(training_errors)
+    print("Prediction ratios are", ", ".join(training_errors))
     return self.model[0]
 
   def num_examples(self):
@@ -69,18 +69,22 @@ class Predictor(object):
     return [1.0, float(scale) / float(mc), float(mc), np.log(mc)]
 
 if __name__ == "__main__":
-  if len(sys.argv) != 2:
-    print "Usage <predictor.py> <csv_file_train>"
-    sys.exit(0)
+  parser = argparse.ArgumentParser(description='Experiment Design')
 
-  pred = Predictor(data_file=sys.argv[1])
+  parser.add_argument('--csv-path', type=str, required=True,
+      help='The csv files containing the training data')
+  
+  args = parser.parse_args()
+  print("csv file:", args.csv_path)
 
+  pred = Predictor(data_file=args.csv_path)
+
+  print("Model Fitting")
   model = pred.fit()
   
-  test_data = [[i, 1.0] for i in xrange(4, 64, 4)]
+  test_data = [[i, 1.0] for i in range(4, 64, 4)]
 
   predicted_times = pred.predict_all(test_data)
-  print
-  print "Machines, Predicted Time"
-  for i in xrange(0, len(test_data)):
-    print test_data[i][0], predicted_times[i]
+  print("Depth Fanout Predicted-Time")
+  for i in range(0, len(test_data)):
+    print(test_data[i][0],test_data[i][1], predicted_times[i])
