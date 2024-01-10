@@ -100,4 +100,9 @@ The procedure can be divided into three steps.
 - python3 run.py create-template -r 10 -p 1 -b 10 -red 0 -c 1 -rm dpdk -d 1 -dm large -conf 0
 - python3 run.py deploy-stack -dm large
 
+Logs in root proxy:
+- tail -f /var/log/cloud-init-output.log
 
+In client:
+- ./build/multicast_client -a mac -t 10 -i 0 -s test-after-merge
+- 
