@@ -96,4 +96,8 @@ The procedure can be divided into three steps.
 
 
 
+## Running Jasper
+- python3 run.py create-template -r 10 -p 1 -b 10 -red 0 -c 1 -rm dpdk -d 1 -dm large -conf 0
+- python3 run.py deploy-stack -dm large
+
 
