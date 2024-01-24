@@ -61,6 +61,10 @@ class ExperimentDesign(object):
         return constraints
 
     def total_nodes(self, D, F):
+        # it is used for calculting the number of receivers
+        # i.e., leaves of a tree of fanout F and depth D
+        # Depth of 1 means a single node, depth of 0 mean no node
+        # minimum depth we use is 2
         D = D-1
         return F**D
 
