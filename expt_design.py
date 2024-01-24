@@ -11,12 +11,10 @@ class ExperimentDesign(object):
     Represents an experiment design object that can be used to setup
     and run experiment design.
     '''
-    def __init__(self, parts_min, parts_max, total_parts,
-                #  mcs_min=1, mcs_max=16,cores_per_mc=2, # dummy values
-                 depth_min=1, depth_max=5,
-                 fanout_min = 10, fanout_max=30, # these four parameters are what we need
-                 budget=10.0,
-                 num_parts_interpolate=20):
+    def __init__(self,
+                 depth_min=2, depth_max=5,
+                 fanout_min = 5, fanout_max=20, # these four parameters are what we need
+                 ):
         '''
         Create an experiment design instance.
 
@@ -39,20 +37,20 @@ class ExperimentDesign(object):
         :param budget: Number of points to interpolate between parts_min and parts_max 
         :type budget: float
         '''
-        self.parts_min = parts_min
-        self.parts_max = parts_max
-        self.total_parts = total_parts
+        # self.parts_min = parts_min
+        # self.parts_max = parts_max
+        # self.total_parts = total_parts
         # self.mcs_min = mcs_min
         # self.mcs_max = mcs_max
         # self.cores_per_mc = cores_per_mc
-        self.num_parts_interpolate = num_parts_interpolate
+        # self.num_parts_interpolate = num_parts_interpolate
         self.budget = 5000
 
         self.depth_min_ = depth_min
         self.depth_max_ = depth_max
         self.fanout_min = fanout_min
         self.fanout_max = fanout_max
-        self.recievers_max = 10_000 # make it fixed for now
+        self.recievers_max = 5_000 # make it fixed for now
 
     def _construct_constraints(self, lambdas, points):
         '''Construct non-negative lambdas and budget constraints'''
@@ -62,10 +60,16 @@ class ExperimentDesign(object):
         constraints.append(self._get_cost(lambdas, points) <= self.recievers_max)
         return constraints
 
+    # def total_nodes(self, D, F):
+    #     if D == 1:
+    #         return 1  # The root node
+    #     return (F ** D) + self.total_nodes(D - 1, F)
+
     def total_nodes(self, D, F):
-        if D == 0:
-            return 1  # The root node
-        return F ** D + self.total_nodes(D - 1, F)
+
+        D = D - 1 # sp that depth = 1 means a single node, and depth = 0 should not be possible
+        return (F**(D+1) - 1) // (F - 1)
+
 
     def _get_cost(self, lambdas, points):
         '''Estimate the cost of an experiment. Right now this is input_frac/machines'''
@@ -92,7 +96,7 @@ class ExperimentDesign(object):
             for fanout in fanout_range:
                 if self.total_nodes(depth, fanout) <= self.recievers_max:
                     yield [depth, fanout]
-        
+
         # mcs_range = list(range(self.mcs_min, self.mcs_max + 1))
 
         # scale_min = float(self.parts_min) / float(self.total_parts)
@@ -177,12 +181,12 @@ def _get_features(training_point):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Experiment Design')
 
-    parser.add_argument('--min-parts', type=int, required=True,
-        help='Minimum number of partitions to use in experiments')
-    parser.add_argument('--max-parts', type=int, required=True,
-        help='Maximum number of partitions to use in experiments')
-    parser.add_argument('--total-parts', type=int, required=True,
-        help='Total number of partitions in the dataset')
+    # parser.add_argument('--min-parts', type=int, required=True,
+    #     help='Minimum number of partitions to use in experiments')
+    # parser.add_argument('--max-parts', type=int, required=True,
+    #     help='Maximum number of partitions to use in experiments')
+    # parser.add_argument('--total-parts', type=int, required=True,
+    #     help='Total number of partitions in the dataset')
 
     # parser.add_argument('--min-mcs', type=int, required=True,
     #     help='Minimum number of machines to use in experiments')
@@ -191,25 +195,24 @@ if __name__ == "__main__":
     # parser.add_argument('--cores-per-mc', type=int, default=2,
     #     help='Number of cores or slots available per machine, (default 2)')
 
-    parser.add_argument('--depth-min', type=int, default=1,
+    parser.add_argument('--depth-min', type=int, default=2,
         help='Minimum depth of the multicast tree in experiments')
     parser.add_argument('--depth-max', type=int, default =5,
         help='Maximum depth of the multicast tree in experiments')
-    parser.add_argument('--fanout-min', type=int, default=10,
+    parser.add_argument('--fanout-min', type=int, default=5,
         help='Minimum fanout factor of the multicast tree in experiments')
-    parser.add_argument('--fanout-max', type=int, default=30,
+    parser.add_argument('--fanout-max', type=int, default=20,
         help='Maximum fanout factor of the multicast tree in experiments')
 
-    parser.add_argument('--budget', type=float, default=10.0,
-        help='Budget of experiment design problem, (default 10.0)')
-    parser.add_argument('--num-parts-interpolate', type=int, default=20,
-        help='Number of points to interpolate between min_parts and max_parts, (default 20)')
+    # parser.add_argument('--budget', type=float, default=10.0,
+    #     help='Budget of experiment design problem, (default 10.0)')
+    # parser.add_argument('--num-parts-interpolate', type=int, default=20,
+    #     help='Number of points to interpolate between min_parts and max_parts, (default 20)')
 
     args = parser.parse_args()
 
-    ex = ExperimentDesign(args.min_parts, args.max_parts, args.total_parts,
-        args.depth_min, args.depth_max, args.fanout_min,args.fanout_max, args.budget,
-        args.num_parts_interpolate)
+    ex = ExperimentDesign(
+        args.depth_min, args.depth_max, args.fanout_min,args.fanout_max)
 
     expts = ex.run()
     print("Depth Fanout Weight")
