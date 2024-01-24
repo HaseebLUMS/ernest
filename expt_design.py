@@ -60,15 +60,9 @@ class ExperimentDesign(object):
         constraints.append(self._get_cost(lambdas, points) <= self.recievers_max)
         return constraints
 
-    # def total_nodes(self, D, F):
-    #     if D == 1:
-    #         return 1  # The root node
-    #     return (F ** D) + self.total_nodes(D - 1, F)
-
     def total_nodes(self, D, F):
-
-        D = D - 1 # sp that depth = 1 means a single node, and depth = 0 should not be possible
-        return (F**(D+1) - 1) // (F - 1)
+        D = D-1
+        return F**D
 
 
     def _get_cost(self, lambdas, points):
